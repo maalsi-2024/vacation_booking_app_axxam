@@ -24,6 +24,57 @@ async function connectDB(req, res, next) {
   }
 }
 
+// Add these routes to your Express server
+
+// Routes pour l'authentification
+app.post('/api/auth/register', connectDB, async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await req.db.collection('users').findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Cet email est déjà utilisé" });
+    }
+
+    // Créer le nouvel utilisateur
+    const user = {
+      email,
+      password, // Note: In production, hash the password!
+      name,
+      createdAt: new Date()
+    };
+    
+    const result = await req.db.collection('users').insertOne(user);
+    res.status(201).json({ 
+      _id: result.insertedId,
+      email,
+      name 
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de l'inscription" });
+  }
+});
+
+app.post('/api/auth/login', connectDB, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const user = await req.db.collection('users').findOne({ email });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+    }
+
+    res.json({
+      _id: user._id,
+      email: user.email,
+      name: user.name
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la connexion" });
+  }
+});
+
 // Routes pour les offres
 app.get('/api/offers', connectDB, async (req, res) => {
   try {
