@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import bcrypt from 'bcryptjs';
 import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 
@@ -24,23 +25,20 @@ async function connectDB(req, res, next) {
   }
 }
 
-// Add these routes to your Express server
-
-// Routes pour l'authentification
 app.post('/api/auth/register', connectDB, async (req, res) => {
   try {
     const { email, password, name } = req.body;
     
-    // Vérifier si l'utilisateur existe déjà
     const existingUser = await req.db.collection('users').findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Cet email est déjà utilisé" });
     }
 
-    // Créer le nouvel utilisateur
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = {
       email,
-      password, // Note: In production, hash the password!
+      password: hashedPassword,
       name,
       createdAt: new Date()
     };
@@ -59,13 +57,18 @@ app.post('/api/auth/register', connectDB, async (req, res) => {
 app.post('/api/auth/login', connectDB, async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     const user = await req.db.collection('users').findOne({ email });
-    if (!user || user.password !== password) {
-      return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+    if (!user) {
+      return res.status(400).json({ error: "Utilisateur non trouvé" });
     }
 
-    res.json({
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Mot de passe incorrect" });
+    }
+
+    res.status(200).json({
       _id: user._id,
       email: user.email,
       name: user.name
