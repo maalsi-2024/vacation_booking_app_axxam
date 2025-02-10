@@ -14,7 +14,6 @@ app.use(express.json());
 const uri = "mongodb://localhost:27017";
 const client = new MongoClient(uri);
 
-// Middleware pour la connexion à MongoDB
 async function connectDB(req, res, next) {
   try {
     await client.connect();
@@ -25,61 +24,62 @@ async function connectDB(req, res, next) {
   }
 }
 
-// Routes pour les destinations
-app.get('/api/destinations', connectDB, async (req, res) => {
+// Routes pour les offres
+app.get('/api/offers', connectDB, async (req, res) => {
   try {
-    const destinations = await req.db.collection('destinations').find().toArray();
-    res.json(destinations);
+    const offers = await req.db.collection('offers').find().toArray();
+    res.json(offers);
   } catch (error) {
-    res.status(500).json({ error: "Erreur lors de la récupération des destinations" });
+    res.status(500).json({ error: "Erreur lors de la récupération des offres" });
   }
 });
 
-app.get('/api/destinations/:id', connectDB, async (req, res) => {
+app.get('/api/offers/:id', connectDB, async (req, res) => {
   try {
-    const destination = await req.db.collection('destinations').findOne({
+    const offer = await req.db.collection('offers').findOne({
       _id: new ObjectId(req.params.id)
     });
-    if (!destination) {
-      return res.status(404).json({ error: "Destination non trouvée" });
+    if (!offer) {
+      return res.status(404).json({ error: "Offre non trouvée" });
     }
-    res.json(destination);
+    res.json(offer);
   } catch (error) {
-    res.status(500).json({ error: "Erreur lors de la récupération de la destination" });
+    res.status(500).json({ error: "Erreur lors de la récupération de l'offre" });
   }
 });
 
 // Routes pour les réservations
-app.get('/api/bookings/:userId', connectDB, async (req, res) => {
+app.get('/api/reservations/:utilisateur_id', connectDB, async (req, res) => {
   try {
-    const bookings = await req.db.collection('bookings')
-      .find({ user_id: req.params.userId })
-      .sort({ created_at: -1 })
+    const reservations = await req.db.collection('reservations')
+      .find({ utilisateur_id: req.params.utilisateur_id })
+      .sort({ date_reservation: -1 })
       .toArray();
-    res.json(bookings);
+    res.json(reservations);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération des réservations" });
   }
 });
 
-app.post('/api/bookings', connectDB, async (req, res) => {
+app.post('/api/reservations', connectDB, async (req, res) => {
   try {
-    const booking = {
-      ...req.body,
-      created_at: new Date(),
-      status: 'pending'
+    const reservation = {
+      utilisateur_id: req.body.utilisateur_id,
+      offre_id: req.body.offre_id,
+      date_reservation: req.body.date_reservation,
+      status: "En attente"
     };
-    const result = await req.db.collection('bookings').insertOne(booking);
-    res.status(201).json({ ...booking, _id: result.insertedId });
+    const result = await req.db.collection('reservations').insertOne(reservation);
+    res.status(201).json({ ...reservation, _id: result.insertedId });
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la création de la réservation" });
   }
 });
 
-app.patch('/api/bookings/:id/status', connectDB, async (req, res) => {
+app.patch('/api/reservations/:id/status', connectDB, async (req, res) => {
   try {
     const { status } = req.body;
-    const result = await req.db.collection('bookings').updateOne(
+    const result = await req.db.collection('reservations').updateOne(
       { _id: new ObjectId(req.params.id) },
       { $set: { status } }
     );
@@ -92,13 +92,29 @@ app.patch('/api/bookings/:id/status', connectDB, async (req, res) => {
   }
 });
 
+// Routes pour les utilisateurs
+app.get('/api/users/:id', connectDB, async (req, res) => {
+  try {
+    const user = await req.db.collection('users').findOne({
+      _id: new ObjectId(req.params.id)
+    }, {
+      projection: { mot_de_passe: 0 } // On exclut le mot de passe de la réponse
+    });
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la récupération de l'utilisateur" });
+  }
+});
+
 // Gestion des erreurs
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: "Une erreur est survenue sur le serveur" });
 });
 
-// Démarrage du serveur
 app.listen(port, () => {
   console.log(`Serveur démarré sur http://localhost:${port}`);
 });
