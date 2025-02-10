@@ -1,56 +1,57 @@
 import { useState, useEffect } from "react";
-import { getUserReservations, getOfferById, updateReservationStatus } from "../services/offerService";
+import { getUserBookings, getOfferById, updateBookingStatus } from "../services/offerService";
 import { Calendar, MapPin, AlertCircle } from "lucide-react";
 
 interface Reservation {
   _id: string;
-  utilisateur_id: string;
-  offre_id: string;
-  date_reservation: string;
+  user: string;  // user_id in the backend
+  offer: string;  // offer_id in the backend
+  date: string;  // date_reservation in the backend
   status: string;
 }
 
 interface Offer {
   _id: string;
-  titre: string;
+  type: string; // e.g., "Villa" or other types
   description: string;
-  prix: number;
+  price: number;
+  pictures: string[]; // Array of image URLs
+  disponibility: boolean;
   localisation: string;
-  disponibilite: boolean;
 }
 
-interface ReservationWithOffer extends Reservation {
-  offer?: Offer;
+interface ReservationWithOffer extends Omit<Reservation, 'offer'> {
+  offer?: Offer;  // make offer optional since it may not always be available
 }
 
 export default function Bookings() {
   const [reservations, setReservations] = useState<ReservationWithOffer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // TODO: Remplacer par l'ID de l'utilisateur connecté
+  // TODO: Replace with actual logged-in user ID
   const userId = "789102";
-
+  
   useEffect(() => {
     const fetchReservations = async () => {
       try {
-        const reservationsData = await getUserReservations(userId);
+        const reservationsData = await getUserBookings(userId);
 
-        // Récupérer les détails de chaque offre
+        // Fetch offer details for each reservation
         const reservationsWithOffers = await Promise.all(
           reservationsData.map(async (reservation) => {
             try {
-              const offer = await getOfferById(reservation.offre_id);
+              const offer = await getOfferById(reservation.offer);  // Fetch offer by offer ID
               return { ...reservation, offer };
             } catch (error) {
-              console.error(`Erreur lors de la récupération de l'offre ${reservation.offre_id}:`, error);
-              return reservation;
+              console.error(`Error fetching offer ${reservation.offer}:`, error);
+              return { ...reservation, offer: undefined };  // Ensure offer is undefined if there's an error
             }
           })
         );
 
         setReservations(reservationsWithOffers);
       } catch (error) {
-        console.error("Erreur lors du chargement des réservations:", error);
+        console.error("Error loading reservations:", error);
       } finally {
         setLoading(false);
       }
@@ -74,10 +75,12 @@ export default function Bookings() {
 
   const handleCancelReservation = async (reservationId: string) => {
     try {
-      await updateReservationStatus(reservationId, "Annulée");
-      setReservations((prevReservations) => prevReservations.map((reservation) => (reservation._id === reservationId ? { ...reservation, status: "Annulée" } : reservation)));
+      await updateBookingStatus(reservationId, "Annulée");
+      setReservations((prevReservations) => prevReservations.map((reservation) =>
+        reservation._id === reservationId ? { ...reservation, status: "Annulée" } : reservation
+      ));
     } catch (error) {
-      console.error("Erreur lors de l'annulation de la réservation:", error);
+      console.error("Error canceling reservation:", error);
     }
   };
 
@@ -110,7 +113,7 @@ export default function Bookings() {
             <div className="flex flex-col md:flex-row justify-between">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">{reservation.offer?.titre || "Offre non disponible"}</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">{reservation.offer?.type || "Offre non disponible"}</h2>
                   <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(reservation.status)}`}>{reservation.status}</span>
                 </div>
                 {reservation.offer && (
@@ -123,14 +126,14 @@ export default function Bookings() {
                     <div className="flex items-center text-gray-500 mb-4">
                       <Calendar className="h-4 w-4 mr-2" />
                       <span>
-                        {new Date(reservation.date_reservation).toLocaleDateString("fr-FR", {
+                        {new Date(reservation.date).toLocaleDateString("fr-FR", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
                         })}
                       </span>
                     </div>
-                    <div className="text-lg font-semibold text-indigo-600">{reservation.offer.prix.toLocaleString()}€</div>
+                    <div className="text-lg font-semibold text-indigo-600">{reservation.offer.price.toLocaleString()}€</div>
                   </>
                 )}
               </div>

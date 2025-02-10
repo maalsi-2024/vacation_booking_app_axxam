@@ -5,11 +5,12 @@ import { getAllOffers } from '../services/offerService';
 
 interface Offer {
   _id: string;
-  titre: string;
+  type: string; // "Villa" ou autre
   description: string;
-  prix: number;
+  price: number;
+  pictures: string[]; // Tableau d'URLs d'images
+  disponibility: boolean;
   localisation: string;
-  disponibilite: boolean;
 }
 
 export default function Home() {
@@ -43,7 +44,7 @@ export default function Home() {
         
         <div className="mt-10">
           <Link
-            to="/offers"
+            to="/destinations"
             className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
           >
             <Search className="mr-2 h-5 w-5" />
@@ -60,18 +61,18 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {offers.filter(offer => offer.disponibilite).map((offer) => (
+            {offers.filter(offer => offer.disponibility).map((offer) => (
               <div key={offer._id} className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="p-4">
-                  <h3 className="text-lg font-medium text-gray-900">{offer.titre}</h3>
+                  <h3 className="text-lg font-medium text-gray-900">{offer.type}</h3>
                   <p className="mt-2 text-sm text-gray-500">{offer.description}</p>
-                  <p className="mt-2 text-lg font-semibold text-indigo-600">{offer.prix.toLocaleString()}€</p>
+                  <p className="mt-2 text-lg font-semibold text-indigo-600">{offer.price.toLocaleString()}€</p>
                   <div className="mt-4 flex items-center">
                     <MapPin className="h-4 w-4 text-indigo-600" />
                     <span className="ml-1 text-sm text-gray-500">{offer.localisation}</span>
                   </div>
                   <Link
-                    to={`/offers/${offer._id}`}
+                    to={`/destinations/${offer._id}`}
                     className="mt-4 block w-full text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
                     Voir les détails
